@@ -769,11 +769,11 @@ npm run dev
 ## ✅ Checklist de Desarrollo
 
 ### **🔧 CONFIGURACIÓN INICIAL**
-- [ ] Node.js (18+) y npm instalados y verificados
-- [ ] Foundry instalado (`curl -L https://foundry.paradigm.xyz | bash`)
-- [ ] MetaMask instalado y configurado
-- [ ] Estructura de carpetas creada desde cero
-- [ ] Anvil corriendo en puerto 8545
+- [ x ] Node.js (18+) y npm instalados y verificados
+- [ x ] Foundry instalado (`curl -L https://foundry.paradigm.xyz | bash`)
+- [ x ] MetaMask instalado y configurado
+- [ x ] Estructura de carpetas creada desde cero
+- [ x ] Anvil corriendo en puerto 8545
 
 ### **⚡ SMART CONTRACT**
 - [ ] `SupplyChain.sol` programado con todas las estructuras
