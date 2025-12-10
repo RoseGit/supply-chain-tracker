@@ -165,16 +165,75 @@ contract SupplyChainTest is Test {
         supplyChain.createToken(unicode"Maíz", 100, '{"quality":"high"}', 0);
     }
 
+    // realiza una transferencia valida entre producer -> factory
+    function testValidTransferProducerToFactory() public {
+        vm.prank(producer);
+        supplyChain.createToken("Maiz", 100, '{"quality":"high"}', 0);
+        
+        vm.prank(producer);
+        supplyChain.transfer(factory, 1, 50);
+        SupplyChain.Transfer memory t = supplyChain.getTransfer(1);
+        assertEq(t.from, producer);
+        assertEq(t.to, factory);
+        assertEq(t.amount, 50);
+    }
+
+    // transferencia invalida de producer a consumer 
+    function testInvalidTransferProducerToConsumer() public {
+        vm.prank(producer);
+        supplyChain.createToken("Maiz", 100, '{"quality":"high"}', 0);
+
+        vm.expectRevert(bytes("Transferencia no permitida en este orden"));
+        vm.prank(producer);
+        supplyChain.transfer(consumer, 1, 10);
+    }
+
+    
+    function testInvalidTransferRetailerToProducer() public {
+        vm.prank(producer);
+        supplyChain.createToken("Maiz", 100, '{"quality":"high"}', 0);
+
+        // Primero mover token hasta Retailer para simular flujo
+        vm.prank(producer);
+        supplyChain.transfer(factory, 1, 50);
+        vm.prank(factory);
+        supplyChain.acceptTransfer(1);
+
+        vm.prank(factory);
+        supplyChain.transfer(retailer, 1, 50);
+        vm.prank(retailer);
+        supplyChain.acceptTransfer(2);
+
+        // Intentar transferencia inválida Retailer → Producer
+        vm.expectRevert(bytes("Transferencia no permitida en este orden"));
+        vm.prank(retailer);
+        supplyChain.transfer(producer, 1, 10);
+    }
+
     // ---------------- Flujo completo ----------------
     // verifica que se puede crear un activo y moverlo exitosamente del productor a la fábrica a través del sistema de transferencia de dos pasos.
     function testCompleteSupplyChainFlow() public {
-        vm.startPrank(producer);
-        supplyChain.createToken(unicode"Maíz", 100, '{"quality":"high"}', 0);
+        vm.prank(producer);
+        supplyChain.createToken("Maiz", 100, '{"quality":"high"}', 0);
+        
+        // Producer → Factory
+        vm.prank(producer);
         supplyChain.transfer(factory, 1, 50);
-        vm.stopPrank();
-
         vm.prank(factory);
         supplyChain.acceptTransfer(1);
-        assertEq(supplyChain.getTokenBalance(1, factory), 50);
+
+        // Factory → Retailer
+        vm.prank(factory);
+        supplyChain.transfer(retailer, 1, 50);
+        vm.prank(retailer);
+        supplyChain.acceptTransfer(2);
+
+        // Retailer → Consumer
+        vm.prank(retailer);
+        supplyChain.transfer(consumer, 1, 50);
+        vm.prank(consumer);
+        supplyChain.acceptTransfer(3);
+
+        assertEq(supplyChain.getTokenBalance(1, consumer), 50);
     }
 }

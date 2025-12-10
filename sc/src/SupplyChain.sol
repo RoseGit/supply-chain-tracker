@@ -51,6 +51,7 @@ contract SupplyChain {
     mapping(uint256 => Transfer) public transfers;      // Sirve para obtener todos los datos de un Transfer por su ID.
     mapping(uint256 => User) public users;              // Sirve para obtener todos los datos deun User por su ID.
     mapping(address => uint256) public addressToUserId; // Mantiene la relacion entre la direccion del usuario y poder obtener su ID.
+    mapping(string => uint) public roleOrder;           // Sirve para mantener el orden de flujo entre actores, un consumer no puede transferir a un producer por ejemplo 
 
     // Eventos
     // Son una forma de emitir un registro de lo que ocurrio y se almacenan en la historia de transacciones de la blockchain. Muy util para Historial y auditoria
@@ -83,6 +84,11 @@ contract SupplyChain {
      */
     constructor() {
         admin = msg.sender; // msg.sender contiene el valor de la billetara, constructor se ejecuta al desplegar el contrato
+        
+        roleOrder["Producer"] = 1;
+        roleOrder["Factory"] = 2;
+        roleOrder["Retailer"] = 3;
+        roleOrder["Consumer"] = 4;
     }
 
     // ---------------- Gestión de Usuarios ----------------
@@ -148,9 +154,19 @@ contract SupplyChain {
     // ---------------- Gestión de Transferencias ----------------
     // Registra una solicitud para mover una cantidad de un token del saldo del remitente a un destinatario to
     function transfer(address to, uint tokenId, uint amount) public {
-        require(amount > 0, "Amount must be greater than zero");
-        
         require(tokens[tokenId].balance[msg.sender] >= amount, "Saldo insuficiente");
+        require(amount > 0, "Amount must be greater than zero");
+        require(to != msg.sender, "No puedes transferir a ti mismo");
+        
+        
+        // Validación de roles
+        uint fromUserId = addressToUserId[msg.sender];
+        uint toUserId = addressToUserId[to];
+        require(fromUserId != 0 && toUserId != 0, "Usuarios no registrados");
+        string memory fromRole = users[fromUserId].role;
+        string memory toRole = users[toUserId].role;
+        require(roleOrder[fromRole] + 1 == roleOrder[toRole], "Transferencia no permitida en este orden");
+
         uint256 transferId = nextTransferId++;
         transfers[transferId] = Transfer(transferId, msg.sender, to, tokenId, block.timestamp, amount, TransferStatus.Pending);
         emit TransferRequested(transferId, msg.sender, to, tokenId, amount);
