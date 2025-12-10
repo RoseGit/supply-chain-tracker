@@ -1,0 +1,9 @@
+# --- Foundry ---
+# Dependencias instaladas con forge install
+lib/
+
+# Directorio de compilación
+out/
+
+# Caché de compilación
+cache/
