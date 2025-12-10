@@ -7,3 +7,6 @@ out/
 
 # Caché de compilación
 cache/
+
+# trazas de las ejecuciones de scripts de despliegue y recibos de transacciones 
+broadcast/

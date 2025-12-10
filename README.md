@@ -776,14 +776,14 @@ npm run dev
 - [ x ] Anvil corriendo en puerto 8545
 
 ### **⚡ SMART CONTRACT**
-- [ ] `SupplyChain.sol` programado con todas las estructuras
-- [ ] Enums `UserStatus` y `TransferStatus` definidos
-- [ ] Structs `Token`, `Transfer`, `User` implementados
-- [ ] Todas las funciones públicas programadas
-- [ ] Modificadores de acceso implementados
-- [ ] Script de deploy `Deploy.s.sol` creado
-- [ ] Tests unitarios escritos y **TODOS PASANDO** ✅
-- [ ] Contrato desplegado exitosamente en Anvil
+- [ x ] `SupplyChain.sol` programado con todas las estructuras
+- [ x ] Enums `UserStatus` y `TransferStatus` definidos
+- [ x ] Structs `Token`, `Transfer`, `User` implementados
+- [ x ] Todas las funciones públicas programadas
+- [ x ] Modificadores de acceso implementados
+- [ x ] Script de deploy `Deploy.s.sol` creado
+- [ x ] Tests unitarios escritos y **TODOS PASANDO** ✅
+- [ x ] Contrato desplegado exitosamente en Anvil
 
 ### **🌐 FRONTEND**
 - [ ] Proyecto Next.js inicializado con TypeScript
