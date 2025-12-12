@@ -786,8 +786,8 @@ npm run dev
 - [ x ] Contrato desplegado exitosamente en Anvil
 
 ### **🌐 FRONTEND**
-- [ ] Proyecto Next.js inicializado con TypeScript
-- [ ] Dependencias instaladas (ethers, tailwind, radix-ui)
+- [ x ] Proyecto Next.js inicializado con TypeScript
+- [ x ] Dependencias instaladas (ethers, tailwind, radix-ui)
 - [ ] `Web3Context` programado con localStorage
 - [ ] Hook `useWallet` implementado
 - [ ] Servicio `Web3Service` creado
