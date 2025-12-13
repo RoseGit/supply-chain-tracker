@@ -82,14 +82,6 @@ export function useSupplyChain() {
     }, [fetchUserData]); // Se ejecuta al cambiar la cuenta o la conexión
 
     
-useEffect(() => {
-    console.log("Estado actualizado:");
-    console.log("isRegistered:", isRegistered);
-    console.log("role:", role);
-    console.log("status:", status);
-}, [isRegistered, role, status]);
-
-
     // Función para solicitar rol (Transacción)
     async function requestUserRole(roleToRequest: string) {
         if (!signer) {
