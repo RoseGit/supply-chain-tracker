@@ -1,127 +1,127 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import { getContract } from "@/contracts/contract";
+import { useState, useEffect, useCallback } from "react";
+import { useWallet } from "@/contexts/WalletContext";
+import { getContract } from "@/contracts/contract"; // Asume que getContract está aquí
+import { ethers } from "ethers"; // Necesario para types
 
+// Definición de tipos para mayor claridad
 type UserStatus = "Pending" | "Approved" | "Rejected" | "Canceled";
-
-interface UserInfo {
-  id: number;
-  userAddress: string;
-  role: string;
-  status: UserStatus;
-}
+// Definir un tipo para la tupla de userInfo (asumiendo que ethers.js 
+// devuelve un objeto con propiedades nombradas si se usa el ABI legible)
+type UserInfoResult = {
+    id: bigint; // o number si tu ABI lo define así
+    userAddress: string;
+    role: string;
+    status: number; // Numérico en el contrato
+};
 
 export function useSupplyChain() {
-  const [account, setAccount] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [status, setStatus] = useState<UserStatus | null>(null);
-  const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+    // ESTADOS DERIVADOS DEL CONTRATO
+    const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
+    const [role, setRole] = useState<string | null>(null);
+    const [status, setStatus] = useState<UserStatus | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    
+    // OBTENEMOS ESTADOS PRIMARIOS DEL CONTEXTO
+    const { account, signer, isConnected } = useWallet();
+    
+    // Obtenemos la instancia del contrato (se actualiza cuando el signer cambia)
+    // Usamos el signer para poder hacer transacciones; si no está conectado, usamos null
+    const contract = getContract(signer as ethers.Signer || null); 
 
-  // Conectar wallet y obtener info del usuario
-  async function connectWallet() {
-    if (typeof window.ethereum === "undefined") {
-      alert("MetaMask no está instalado");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      const userAccount = accounts[0];
-      setAccount(userAccount);
-
-      const signer = await provider.getSigner();
-      const contract = getContract(signer);
-
-      // Verificar si es admin
-      const isAdmin = await contract.isAdmin(userAccount);
-      if (isAdmin) {
-        setRole("Admin");
-        setStatus("Approved");
-        setIsRegistered(true);
-        return;
-      }
-
-      // Verificar si está registrado
-      const registered = await contract.isUserRegistered(userAccount);
-      setIsRegistered(registered);
-
-      if (registered) {
-        const userInfo = await contract.getUserInfo(userAccount);
-        setRole(userInfo.role);
-        const statusText = ["Pending", "Approved", "Rejected", "Canceled"][userInfo.status];
-        setStatus(statusText as UserStatus);
-      }
-    } catch (error) {
-      console.error("Error al conectar wallet:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Desconectar wallet
-  function disconnectWallet() {
-    setAccount(null);
-    setRole(null);
-    setStatus(null);
-    setIsRegistered(null);
-  }
-
-  // Solicitar rol
-  async function requestUserRole(roleToRequest: string) {
-    if (!account) return;
-    setLoading(true);
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = getContract(signer);
-
-      const tx = await contract.requestUserRole(roleToRequest);
-      await tx.wait();
-
-      alert(`Solicitud enviada para el rol: ${roleToRequest}`);
-      setRole(roleToRequest);
-      setStatus("Pending");
-      setIsRegistered(true);
-    } catch (error) {
-      console.error("Error al solicitar rol:", error);
-      alert("Hubo un problema al enviar la solicitud.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Detectar cambios en MetaMask (cuenta/red)
-  useEffect(() => {
-    if (typeof window.ethereum !== "undefined") {
-      window.ethereum.on("accountsChanged", async (accounts: string[]) => {
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          await connectWallet();
-        } else {
-          disconnectWallet();
+    // Función para obtener todos los datos del usuario
+    const fetchUserData = useCallback(async () => {
+        
+        if (!account || !isConnected || !signer) {
+            setIsRegistered(null);
+            setRole(null);
+            setStatus(null);
+            return;
         }
-      });
 
-      window.ethereum.on("chainChanged", () => {
-        window.location.reload();
-      });
+        setLoading(true);
+        try {
+            // 1. Verificar si es admin
+            const isAdmin = await contract.isAdmin(account);
+           
+            if (isAdmin) {
+                setRole("Admin");
+                setStatus("Approved");
+                setIsRegistered(true);
+                return;
+            }
+
+            // 2. Verificar si está registrado
+            const registered = await contract.isUserRegistered(account);
+            
+            setIsRegistered(registered);
+
+            if (registered) {
+                const userInfo: UserInfoResult = await contract.getUserInfo(account);
+                setRole(userInfo.role);
+                
+                // Conversión del enum
+                const statusText = ["Pending", "Approved", "Rejected", "Canceled"][userInfo.status];
+                setStatus(statusText as UserStatus);
+            }
+        } catch (error) {
+            console.error("Error al obtener datos del usuario desde el contrato:", error);
+            setIsRegistered(false); // Asumir no registrado o error
+            setRole(null);
+            setStatus(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [account, isConnected, signer, contract]);
+
+
+    // useEffect para re-ejecutar la consulta cuando la cuenta o la conexión cambian
+    useEffect(() => {
+        fetchUserData();
+    }, [fetchUserData]); // Se ejecuta al cambiar la cuenta o la conexión
+
+    
+useEffect(() => {
+    console.log("Estado actualizado:");
+    console.log("isRegistered:", isRegistered);
+    console.log("role:", role);
+    console.log("status:", status);
+}, [isRegistered, role, status]);
+
+
+    // Función para solicitar rol (Transacción)
+    async function requestUserRole(roleToRequest: string) {
+        if (!signer) {
+            alert("Conecta tu wallet primero.");
+            return;
+        }
+        setLoading(true);
+        try {
+            // Usamos la instancia del contrato que ya tiene el signer
+            
+            const tx = await contract.requestUserRole(roleToRequest);
+            alert(`Transacción enviada: ${tx.hash}. Esperando confirmación...`);
+            await tx.wait();
+
+            // Refrescar el estado después de la transacción
+            await fetchUserData(); 
+            alert(`Solicitud confirmada para el rol: ${roleToRequest}`);
+        } catch (error) {
+            console.error("Error al solicitar rol:", error);
+            alert("Hubo un problema al enviar la solicitud.");
+        } finally {
+            setLoading(false);
+        }
     }
-  }, []);
 
-  return {
-    account,
-    role,
-    status,
-    isRegistered,
-    loading,
-    connectWallet,
-    disconnectWallet,
-    requestUserRole,
-  };
+    return {
+        isRegistered,
+        role,
+        status,
+        loading,
+        requestUserRole,
+        // Y las funciones de gestión de conexión ya no están aquí, se usan desde useWallet
+        // como connectWallet, disconnectWallet
+    };
 }

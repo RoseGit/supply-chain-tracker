@@ -1,11 +1,12 @@
 "use client";
 
-import React from 'react';
 import { useWallet } from "@/contexts/WalletContext";
 import { useRouter } from "next/navigation";
+import { useSupplyChain } from "@/hooks/useSupplychain";
 
 export default function ClientHeader() {
-    const { account, role, disconnectWallet } = useWallet();
+    const { account, disconnectWallet } = useWallet();
+    const { role } = useSupplyChain();
     const router = useRouter();
 
     function handleDisconnect() {
@@ -16,6 +17,7 @@ export default function ClientHeader() {
 
 
     
+
 return (
     <header className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
       <h1 className="text-xl font-bold">Supply Chain DApp</h1>
