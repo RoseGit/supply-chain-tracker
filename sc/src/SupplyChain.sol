@@ -122,6 +122,11 @@ contract SupplyChain {
         return userAddress == admin;
     }
 
+    
+    function isUserRegistered(address userAddress) public view returns (bool) {
+        return addressToUserId[userAddress] != 0;
+    }
+    
     // ---------------- Gestión de Tokens ----------------
     // Esta es la funcion que permite crear el token o el activo que se va a reastrear
     function createToken(string memory name, uint totalSupply, string memory features, uint parentId) public {
