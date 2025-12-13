@@ -40,8 +40,8 @@ function RoleRequestForm({ loading, requestUserRole }: { loading: boolean; reque
         onClick={handleSubmit}
         disabled={!roleToRequest || loading}
         className={`w-full px-4 py-2 text-white rounded transition ${!roleToRequest || loading
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700"
+          ? "bg-gray-400 cursor-not-allowed"
+          : "bg-green-600 hover:bg-green-700"
           }`}
       >
         {loading ? "Procesando Transacción..." : "Solicitar Rol"}
@@ -58,11 +58,15 @@ export default function Home() {
   const router = useRouter();
 
   // Redirección del Admin
-  useEffect(() => {
-    if (role === "Admin") {
-      router.push("/dashboard");
-    }
-  }, [role, router]);
+
+useEffect(() => {
+  if (role === "Admin") {
+    router.push("/dashboard");
+  } else if (role && status === "Approved") {
+    router.push("/dashboard");
+  }
+}, [role, status, router]);
+
 
   const isLoading = !account && !isRegistered; // Carga inicial
 

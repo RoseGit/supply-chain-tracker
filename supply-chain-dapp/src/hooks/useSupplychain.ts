@@ -1,39 +1,40 @@
+
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { getContract } from "@/contracts/contract"; // Asume que getContract está aquí
-import { ethers } from "ethers"; // Necesario para types
+import { getContract } from "@/contracts/contract";
+import { ethers } from "ethers";
 
-// Definición de tipos para mayor claridad
+// Tipos
 type UserStatus = "Pending" | "Approved" | "Rejected" | "Canceled";
-// Definir un tipo para la tupla de userInfo (asumiendo que ethers.js 
-// devuelve un objeto con propiedades nombradas si se usa el ABI legible)
+
 type UserInfoResult = {
-    id: bigint; // o number si tu ABI lo define así
+    id: bigint;
     userAddress: string;
     role: string;
-    status: number; // Numérico en el contrato
+    status: number; // Enum numérico
 };
 
 export function useSupplyChain() {
-    // ESTADOS DERIVADOS DEL CONTRATO
+    // Estados derivados del contrato
     const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [status, setStatus] = useState<UserStatus | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
-    
-    // OBTENEMOS ESTADOS PRIMARIOS DEL CONTEXTO
-    const { account, signer, isConnected } = useWallet();
-    
-    // Obtenemos la instancia del contrato (se actualiza cuando el signer cambia)
-    // Usamos el signer para poder hacer transacciones; si no está conectado, usamos null
-    const contract = getContract(signer as ethers.Signer || null); 
+    const [error, setError] = useState<string | null>(null);
 
-    // Función para obtener todos los datos del usuario
+    // Contexto de la wallet
+    const { account, signer, isConnected } = useWallet();
+
+    // Instancia del contrato (memoizada)
+    const contract = useMemo(() => {
+        return signer ? getContract(signer) : null;
+    }, [signer]);
+
+    // Función para obtener datos del usuario
     const fetchUserData = useCallback(async () => {
-        
-        if (!account || !isConnected || !signer) {
+        if (!account || !isConnected || !contract) {
             setIsRegistered(null);
             setRole(null);
             setStatus(null);
@@ -41,10 +42,11 @@ export function useSupplyChain() {
         }
 
         setLoading(true);
+        setError(null);
+
         try {
             // 1. Verificar si es admin
             const isAdmin = await contract.isAdmin(account);
-           
             if (isAdmin) {
                 setRole("Admin");
                 setStatus("Approved");
@@ -54,54 +56,68 @@ export function useSupplyChain() {
 
             // 2. Verificar si está registrado
             const registered = await contract.isUserRegistered(account);
-            
             setIsRegistered(registered);
 
             if (registered) {
                 const userInfo: UserInfoResult = await contract.getUserInfo(account);
                 setRole(userInfo.role);
-                
-                // Conversión del enum
                 const statusText = ["Pending", "Approved", "Rejected", "Canceled"][userInfo.status];
                 setStatus(statusText as UserStatus);
             }
-        } catch (error) {
-            console.error("Error al obtener datos del usuario desde el contrato:", error);
-            setIsRegistered(false); // Asumir no registrado o error
+        } catch (err: any) {
+            console.error("Error al obtener datos del usuario:", err);
+            setError("No se pudo obtener la información del usuario.");
+            setIsRegistered(false);
             setRole(null);
             setStatus(null);
         } finally {
             setLoading(false);
         }
-    }, [account, isConnected, signer, contract]);
+    }, [account, isConnected, contract]);
 
-
-    // useEffect para re-ejecutar la consulta cuando la cuenta o la conexión cambian
+    // Ejecutar cuando cambie la cuenta o conexión
     useEffect(() => {
         fetchUserData();
-    }, [fetchUserData]); // Se ejecuta al cambiar la cuenta o la conexión
+    }, [fetchUserData]);
 
-    
-    // Función para solicitar rol (Transacción)
+    // Función para solicitar rol
     async function requestUserRole(roleToRequest: string) {
-        if (!signer) {
+        if (!signer || !contract) {
             alert("Conecta tu wallet primero.");
             return;
         }
         setLoading(true);
+        setError(null);
         try {
-            // Usamos la instancia del contrato que ya tiene el signer
-            
             const tx = await contract.requestUserRole(roleToRequest);
             alert(`Transacción enviada: ${tx.hash}. Esperando confirmación...`);
             await tx.wait();
-
-            // Refrescar el estado después de la transacción
-            await fetchUserData(); 
+            await fetchUserData();
             alert(`Solicitud confirmada para el rol: ${roleToRequest}`);
-        } catch (error) {
-            console.error("Error al solicitar rol:", error);
-            alert("Hubo un problema al enviar la solicitud.");
+        } catch (err: any) {
+            console.error("Error al solicitar rol:", err);
+            setError("Hubo un problema al enviar la solicitud.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // Función para cambiar estado de usuario (solo admin)
+    async function changeUserStatus(userAddress: string, newStatus: number) {
+        if (!signer || !contract) {
+            alert("Conecta tu wallet primero.");
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            const tx = await contract.changeStatusUser(userAddress, newStatus);
+            alert(`Transacción enviada: ${tx.hash}. Esperando confirmación...`);
+            await tx.wait();
+            alert("Estado actualizado correctamente");
+        } catch (err: any) {
+            console.error("Error al cambiar estado:", err);
+            setError("Hubo un problema al actualizar el estado.");
         } finally {
             setLoading(false);
         }
@@ -112,8 +128,8 @@ export function useSupplyChain() {
         role,
         status,
         loading,
+        error,
         requestUserRole,
-        // Y las funciones de gestión de conexión ya no están aquí, se usan desde useWallet
-        // como connectWallet, disconnectWallet
+        changeUserStatus
     };
 }

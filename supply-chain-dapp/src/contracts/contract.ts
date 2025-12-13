@@ -8,7 +8,11 @@ export const CONTRACT_ABI = [
   "function isUserRegistered(address userAddress) public view returns (bool)",
   "function getUserInfo(address userAddress) public view returns (tuple(uint256 id, address userAddress, string role, uint8 status))",
   "function requestUserRole(string memory role) public",
-  "function isAdmin(address userAddress) public view returns (bool)"
+  "function isAdmin(address userAddress) public view returns (bool)",
+  "function changeStatusUser(address userAddress, uint8 newStatus)",
+  "function nextUserId() view returns (uint256)",
+  "function users(uint256) view returns (uint256 id, address userAddress, string role, uint8 status)"
+
 ];
 
 export function getContract(signerOrProvider: ethers.Signer | ethers.Provider) {
