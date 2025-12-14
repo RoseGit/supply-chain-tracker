@@ -21,6 +21,7 @@ export default function ClientHeader() {
 return (
     <header className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
       <h1 className="text-xl font-bold">Supply Chain DApp</h1>
+
       {account ? (
         <div className="flex items-center gap-4">
           <span>{role ? `Rol: ${role}` : "Cargando rol..."}</span>
@@ -49,6 +50,7 @@ return (
       ) : (
         <span className="text-sm">No conectado</span>
       )}
+      
     </header>
   );
 }

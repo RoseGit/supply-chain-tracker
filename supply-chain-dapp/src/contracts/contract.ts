@@ -11,7 +11,8 @@ export const CONTRACT_ABI = [
   "function isAdmin(address userAddress) public view returns (bool)",
   "function changeStatusUser(address userAddress, uint8 newStatus)",
   "function nextUserId() view returns (uint256)",
-  "function users(uint256) view returns (uint256 id, address userAddress, string role, uint8 status)"
+  "function users(uint256) view returns (uint256 id, address userAddress, string role, uint8 status)",
+  "function createToken(string name, uint256 totalSupply, string features, uint256 parentId)"
 
 ];
 

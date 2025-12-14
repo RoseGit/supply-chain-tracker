@@ -123,6 +123,26 @@ export function useSupplyChain() {
         }
     }
 
+
+    async function createToken(name: string, totalSupply: number, features: string, parentId = 0) {
+        if (!signer || !contract) {
+            alert("Conecta tu wallet primero.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const tx = await contract.createToken(name, totalSupply, features, parentId);
+            await tx.wait();
+        } catch (error) {
+            console.error("Error al crear token:", error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+
+
     return {
         isRegistered,
         role,
@@ -130,6 +150,7 @@ export function useSupplyChain() {
         loading,
         error,
         requestUserRole,
-        changeUserStatus
+        changeUserStatus,
+        createToken
     };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { ethers, Signer, BrowserProvider } from "ethers";
 
 // Definir los tipos de Ethers para el Contexto
@@ -78,31 +78,51 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
         setSigner(null);
         setProvider(null);
     }
-/*
-    React.useEffect(() => {
-        if (typeof window.ethereum !== "undefined") {
-            const handleAccountsChanged = (accounts: string[]) => {
+
+
+    useEffect(() => {
+        async function checkConnection() {
+            if (typeof window.ethereum !== "undefined") {
+                const accounts = await window.ethereum.request({ method: "eth_accounts" });
                 if (accounts.length > 0) {
+                    const activeProvider = new ethers.BrowserProvider(window.ethereum);
+                    setProvider(activeProvider);
                     setAccount(accounts[0]);
-                    // Se podría re-ejecutar connectWallet o solo actualizar la cuenta
-                } else {
-                    disconnectWallet();
+                    const finalSigner = await activeProvider.getSigner();
+                    setSigner(finalSigner);
                 }
-            };
-            const handleChainChanged = () => {
-                window.location.reload(); // Recargar la página es la forma más simple
-            };
-
-            window.ethereum.on("accountsChanged", handleAccountsChanged);
-            window.ethereum.on("chainChanged", handleChainChanged);
-
-            return () => {
-                window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-                window.ethereum.removeListener("chainChanged", handleChainChanged);
-            };
+            }
         }
+        checkConnection();
     }, []);
-    */
+
+
+
+    /*
+        React.useEffect(() => {
+            if (typeof window.ethereum !== "undefined") {
+                const handleAccountsChanged = (accounts: string[]) => {
+                    if (accounts.length > 0) {
+                        setAccount(accounts[0]);
+                        // Se podría re-ejecutar connectWallet o solo actualizar la cuenta
+                    } else {
+                        disconnectWallet();
+                    }
+                };
+                const handleChainChanged = () => {
+                    window.location.reload(); // Recargar la página es la forma más simple
+                };
+    
+                window.ethereum.on("accountsChanged", handleAccountsChanged);
+                window.ethereum.on("chainChanged", handleChainChanged);
+    
+                return () => {
+                    window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+                    window.ethereum.removeListener("chainChanged", handleChainChanged);
+                };
+            }
+        }, []);
+        */
 
     const isConnected = !!account && !!signer;
 
