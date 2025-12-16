@@ -81,8 +81,14 @@ export default function TransferPage() {
       router.push("/dashboard");
     } catch (err) {
       console.error(err);
-      setError("Error al enviar la transferencia.");
-      setMessage("❌ Error al enviar la transferencia.");
+      
+      // Si existe la propiedad reason, la usamos
+      const reason = err.reason || "Error desconocido";
+  
+      setError(reason);
+      setMessage(`❌ ${reason}`);
+
+      
     } finally {
       setLoading(false);
     }

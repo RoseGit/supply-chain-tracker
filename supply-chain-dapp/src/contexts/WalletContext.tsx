@@ -1,28 +1,58 @@
+/**
+ * @fileoverview Contexto de Autenticación y Conexión Web3.
+ * Este módulo gestiona el estado global de la billetera del usuario (MetaMask),
+ * manejando conexiones, cambios de red y persistencia de sesión.
+ */
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { ethers, Signer, BrowserProvider } from "ethers";
 
-// Definir los tipos de Ethers para el Contexto
+/** @type {Signer | null} Instancia del firmante para transacciones */
 type EthersSigner = Signer | null;
+
+/** @type {BrowserProvider | null} Instancia del proveedor de conexión con el navegador */
 type EthersProvider = ethers.BrowserProvider | null;
 
+/**
+ * Interfaz que define los valores expuestos por el WalletContext.
+ */
 interface WalletContextProps {
+    /** Dirección hexadecimal de la cuenta conectada */
     account: string | null;
+    /** Signer de ethers para firmar mensajes y transacciones */
     signer: EthersSigner;
+    /** Provider de ethers para consultas de lectura en la blockchain */
     provider: EthersProvider;
+    /** Función asíncrona para solicitar conexión a MetaMask y validar red */
     connectWallet: () => Promise<void>;
+    /** Función para limpiar el estado y desconectar la vista de la wallet */
     disconnectWallet: () => void;
-    isConnected: boolean; // Nuevo estado derivado
+    /** Estado booleano derivado que indica si hay una conexión activa y válida */
+    isConnected: boolean;
 }
 
+/**Sirve para crear un "contenedor" de datos que puede ser accedido por cualquier componente sin necesidad de pasar variables manualmente de padre a hijo */
 const WalletContext = createContext<WalletContextProps | undefined>(undefined);
 
+/**
+ * Proveedor del contexto de Wallet.
+ * Envuelve la aplicación para permitir el acceso al estado de Web3 en cualquier componente.
+ * * @param {React.ReactNode} children - Componentes hijos que tendrán acceso al contexto.
+ */
+// Esto es lo que usamos en layout.tsx y todos los hijos pueden usarlo, (conectarse ametamask)
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     const [account, setAccount] = useState<string | null>(null);
     const [signer, setSigner] = useState<EthersSigner>(null);
     const [provider, setProvider] = useState<EthersProvider>(null);
 
+    /**
+   * Intenta conectar la billetera del usuario.
+   * Verifica la presencia de MetaMask, solicita el cambio a la red Anvil (31337)
+   * y actualiza los estados de provider, account y signer.
+   * * @throws Mostrará un alert si MetaMask no está instalado o un error en consola si falla la red.
+   */
     async function connectWallet() {
         if (typeof window.ethereum === "undefined") {
             alert("MetaMask no está instalado");
@@ -33,7 +63,9 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
             // Inicializamos el Provider localmente
             let activeProvider = new ethers.BrowserProvider(window.ethereum);
 
-            // 1. Verificar y solicitar cambio de red
+            // 1. Verificar y solicitar cambio de red, 
+            // problema con Metamask parecia no reconocer la red anvil aun cuando estaba bien configurada
+            // por eso se realiza una conexion forzada con este codigo
             let chainId = (await activeProvider.getNetwork()).chainId;
             if (chainId !== 31337n) {
 
@@ -55,12 +87,12 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
             // para la red Anvil, sea que cambiamos o no.
             setProvider(activeProvider); // Guardamos la instancia en el estado del Contexto
 
-            // 2. Solicitamos cuentas y establecemos la conexión
+            // Solicitamos cuentas y establecemos la conexión
             const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
             const userAccount = accounts[0];
             setAccount(userAccount);
 
-            // 3. Obtenemos el Signer y lo guardamos
+            // Obtenemos el Signer y lo guardamos
             // Usamos 'activeProvider' (que es un BrowserProvider)
             const finalSigner = await activeProvider.getSigner();
             setSigner(finalSigner);
@@ -73,13 +105,19 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }
 
+    /**
+    * Resetea el estado de la conexión localmente.
+    */
     async function disconnectWallet() {
         setAccount(null);
         setSigner(null);
         setProvider(null);
     }
 
-
+    /**
+    * Efecto inicial para verificar si el usuario ya tenía una cuenta conectada
+    * al cargar la aplicación (persistencia de sesión).
+    */
     useEffect(() => {
         async function checkConnection() {
             if (typeof window.ethereum !== "undefined") {
@@ -96,9 +134,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
         checkConnection();
     }, []);
 
-
-
-    /*
+    /* Pendiente validar los cambios de red cuando se selecciona desde el metamask
         React.useEffect(() => {
             if (typeof window.ethereum !== "undefined") {
                 const handleAccountsChanged = (accounts: string[]) => {
@@ -140,6 +176,13 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     );
 };
 
+/**
+ * Hook personalizado para acceder al WalletContext.
+ * @returns {WalletContextProps} Objeto con el estado y funciones de la wallet.
+ * @throws {Error} Si se usa fuera de un `WalletProvider`.
+ * * @example
+ * const { account, connectWallet, isConnected } = useWallet();
+ */
 export const useWallet = () => {
     const context = useContext(WalletContext);
     if (!context) {

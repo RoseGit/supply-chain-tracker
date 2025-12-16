@@ -96,17 +96,17 @@ export default function Dashboard() {
       link: "/tokens/create",
     },
     {
-      title: "Transferencias",
-      description: "Gestiona las transferencias de tus activos.",
-      icon: "🔄",
-      link: "/dashboard/transfers",
-    },
-    {
       title: "Mis Activos",
       description: "Consulta los activos que tienes registrados.",
       icon: "🗂️",
       link: "/tokens",
     },
+    {
+      title: "Historial de Transferencias",
+      description: "Consulta las transferencias de tus activos.",
+      icon: "🔄",
+      link: "/transfers/history",
+    }
   ];
 
 

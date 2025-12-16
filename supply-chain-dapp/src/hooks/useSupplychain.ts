@@ -1,14 +1,18 @@
+/**
+ * @fileoverview Hook personalizado para interactuar con la lógica del Smart Contract de Supply Chain.
+ * Centraliza las consultas de usuario, gestión de roles y creación de tokens.
+ */
 
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getContract } from "@/contracts/contract";
-import { ethers } from "ethers";
 
-// Tipos
+/** Representación legible del estado de un usuario en el contrato */
 type UserStatus = "Pending" | "Approved" | "Rejected" | "Canceled";
 
+/** Estructura de datos devuelta por la función `getUserInfo` del Smart Contract */
 type UserInfoResult = {
     id: bigint;
     userAddress: string;
@@ -16,23 +20,37 @@ type UserInfoResult = {
     status: number; // Enum numérico
 };
 
+/**
+ * Hook `useSupplyChain`.
+ * Proporciona el estado del usuario actual y funciones para interactuar con el contrato.
+ * * @returns {Object} Un objeto con estados (loading, role, status) y métodos (requestUserRole, createToken, etc).
+ */
 export function useSupplyChain() {
-    // Estados derivados del contrato
+    // Estados
     const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [status, setStatus] = useState<UserStatus | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Contexto de la wallet
+    // Obtener la conexión actual desde el contexto global
     const { account, signer, isConnected } = useWallet();
 
-    // Instancia del contrato (memoizada)
+    /**
+     * @memoizado contract
+     * Crea la instancia del contrato solo cuando el 'signer' cambia.
+     * Esto evita recrear el objeto del contrato en cada renderizado de React.
+     */
     const contract = useMemo(() => {
         return signer ? getContract(signer) : null;
     }, [signer]);
 
-    // Función para obtener datos del usuario
+    /**
+     * @callback fetchUserData
+     * Obtiene la información del usuario desde la Blockchain.
+     * 1. Verifica si el usuario es Administrador.
+     * 2. Si no es admin, verifica si está registrado y obtiene su rol/estado.
+     */
     const fetchUserData = useCallback(async () => {
         if (!account || !isConnected || !contract) {
             setIsRegistered(null);
@@ -45,7 +63,7 @@ export function useSupplyChain() {
         setError(null);
 
         try {
-            // 1. Verificar si es admin
+            // Verificar si es admin
             const isAdmin = await contract.isAdmin(account);
             if (isAdmin) {
                 setRole("Admin");
@@ -54,7 +72,7 @@ export function useSupplyChain() {
                 return;
             }
 
-            // 2. Verificar si está registrado
+            // Verificar si está registrado
             const registered = await contract.isUserRegistered(account);
             setIsRegistered(registered);
 
@@ -75,12 +93,18 @@ export function useSupplyChain() {
         }
     }, [account, isConnected, contract]);
 
-    // Ejecutar cuando cambie la cuenta o conexión
+    /**
+     * Efecto secundario: Cada vez que los datos de conexión o la función de 
+     * obtención cambian, se refresca la información del usuario.
+     */
     useEffect(() => {
         fetchUserData();
     }, [fetchUserData]);
 
-    // Función para solicitar rol
+    /**
+     * Envía una transacción para solicitar un nuevo rol en el sistema.
+     * @param {string} roleToRequest - El nombre del rol solicitado (ej: "Manufacturer").
+     */
     async function requestUserRole(roleToRequest: string) {
         if (!signer || !contract) {
             alert("Conecta tu wallet primero.");
@@ -102,7 +126,11 @@ export function useSupplyChain() {
         }
     }
 
-    // Función para cambiar estado de usuario (solo admin)
+    /**
+     * Cambia el estado de un usuario (Solo ejecutable por Admin).
+     * @param {string} userAddress - Dirección de la billetera del usuario.
+     * @param {number} newStatus - ID del nuevo estado (0: Pending, 1: Approved, etc).
+     */
     async function changeUserStatus(userAddress: string, newStatus: number) {
         if (!signer || !contract) {
             alert("Conecta tu wallet primero.");
@@ -123,7 +151,13 @@ export function useSupplyChain() {
         }
     }
 
-
+    /**
+    * Crea un nuevo activo (Token) en la cadena de suministro.
+    * @param {string} name - Nombre del activo.
+    * @param {number} totalSupply - Cantidad total a emitir.
+    * @param {string} features - Detalles o características técnicas.
+    * @param {number} parentId - ID del token padre (si es un derivado).
+    */
     async function createToken(name: string, totalSupply: number, features: string, parentId = 0) {
         if (!signer || !contract) {
             alert("Conecta tu wallet primero.");
@@ -140,9 +174,7 @@ export function useSupplyChain() {
             setLoading(false);
         }
     }
-
-
-
+    
     return {
         isRegistered,
         role,
