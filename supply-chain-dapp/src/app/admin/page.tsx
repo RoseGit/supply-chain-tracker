@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Panel de Administración de Usuarios.
+ * Esta página permite a los usuarios con rol "Admin" gestionar el acceso de nuevos
+ * integrantes a la plataforma, permitiendo aprobar, rechazar o revertir estados de registro.
+ */
 
 "use client";
 
@@ -6,8 +11,15 @@ import { useWallet } from "@/contexts/WalletContext";
 import { getContract } from "@/contracts/contract";
 import { ethers } from "ethers";
 
+/**
+ * Componente AdminPage.
+ * Implementa un flujo de seguridad donde primero se verifica el privilegio administrativo
+ * antes de realizar cualquier consulta pesada a la Blockchain.
+ */
 export default function AdminPage() {
   const { account, signer, isConnected } = useWallet();
+
+  // --- ESTADOS DE GESTIÓN ---
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,14 +30,21 @@ export default function AdminPage() {
     return signer ? getContract(signer as ethers.Signer) : null;
   }, [signer]);
 
-  // ✅ Función para obtener usuarios (memoizada)
+  /**
+   * @callback fetchUsers
+   * Recupera la lista completa de usuarios desde la Blockchain.
+   * Itera sobre el mapping de usuarios utilizando el contador global `nextUserId`.
+   */
   const fetchUsers = useCallback(async () => {
     if (!contract) return;
     setLoading(true);
     setError(null);
     try {
+      // Obtiene el límite superior de la iteración
       const totalUsers = await contract.nextUserId();
       const userList = [];
+
+      // Itera desde el ID 1 hasta el total (los mappings suelen ser 1-based en este contrato)
       for (let i = 1; i < Number(totalUsers); i++) {
         const user = await contract.users(i);
         userList.push({
@@ -44,7 +63,11 @@ export default function AdminPage() {
     }
   }, [contract]);
 
-  // ✅ Verificar si es admin y cargar usuarios una sola vez
+  /**
+   * EFECTO: Validación de Identidad.
+   * Verifica si la cuenta conectada tiene permisos de Administrador.
+   * Si es exitoso, dispara la carga de usuarios.
+   */
   useEffect(() => {
     async function checkAdmin() {
       if (account && isConnected && contract) {
@@ -58,7 +81,11 @@ export default function AdminPage() {
     checkAdmin();
   }, [account, isConnected, contract, fetchUsers]);
 
-  // ✅ Cambiar estado de usuario
+  /**
+   * Cambia el estado de un usuario en la Blockchain.
+   * @param address - Dirección pública del usuario a modificar.
+   * @param status - Nuevo estado numérico (0: Pending, 1: Approved, 2: Rejected).
+   */
   async function changeStatus(address: string, status: number) {
     if (!contract) return;
     setLoading(true);
@@ -76,7 +103,7 @@ export default function AdminPage() {
     }
   }
 
-  // ✅ Si no es admin
+  // --- RENDERIZADO CONDICIONAL DE SEGURIDAD ---
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center h-screen bg-blue-50">
@@ -94,6 +121,7 @@ export default function AdminPage() {
           Panel de Administración de Usuarios
         </h1>
 
+        {/* FEEDBACK DE ESTADO */}
         {loading && (
           <p className="text-blue-600 font-medium mb-4 animate-pulse">
             Cargando usuarios...
@@ -125,19 +153,16 @@ export default function AdminPage() {
                   <td className="p-3">{u.role}</td>
                   <td
                     className={`p-3 font-semibold ${u.status === "Approved"
-                        ? "text-green-600"
-                        : u.status === "Rejected"
-                          ? "text-red-600"
-                          : "text-yellow-600"
+                      ? "text-green-600"
+                      : u.status === "Rejected"
+                        ? "text-red-600"
+                        : "text-yellow-600"
                       }`}
                   >
                     {u.status}
                   </td>
 
-
-
-
-
+                  {/* ACCIONES PARA SOLICITUDES PENDIENTES */}
                   <td className="p-3 text-center space-x-2">
                     {u.status === "Pending" && (
                       <>
@@ -156,6 +181,7 @@ export default function AdminPage() {
                       </>
                     )}
 
+                    {/* REVERTIR ESTADO: Permite corregir errores de aprobación/rechazo */}
                     {(u.status === "Approved" || u.status === "Rejected") && (
                       <button
                         onClick={() => changeStatus(u.userAddress, 0)}
@@ -165,10 +191,6 @@ export default function AdminPage() {
                       </button>
                     )}
                   </td>
-
-
-
-
                 </tr>
               ))}
             </tbody>

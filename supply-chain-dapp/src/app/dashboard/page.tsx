@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Panel de Control (Dashboard) del Usuario.
+ * Proporciona acceso rápido a las funciones principales y gestiona la bandeja de entrada
+ * de transferencias pendientes que requieren aprobación del usuario.
+ */
 
 "use client";
 
@@ -5,9 +10,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getContract } from "@/contracts/contract";
-import { ethers } from "ethers";
 import { useNotification } from "@/contexts/NotificationContext";
 
+/**
+ * Interfaz para las transferencias que aún no han sido procesadas.
+ */
 interface TransferInfo {
   id: number;
   tokenName: string;
@@ -16,17 +23,32 @@ interface TransferInfo {
   date: string;
 }
 
-
+/**
+ * Componente Dashboard.
+ * * Lógica principal:
+ * 1. Muestra accesos directos (Cards) a otras secciones.
+ * 2. Filtra la actividad de la blockchain para mostrar solo lo que el usuario debe "Aceptar" o "Rechazar".
+ * 3. Ejecuta transacciones de cambio de estado de transferencia.
+ */
 export default function Dashboard() {
   const { account, signer } = useWallet();
   const { message, setMessage } = useNotification();
+
+  // --- ESTADOS ---
   const [pendingTransfers, setPendingTransfers] = useState<TransferInfo[]>([]);
   const [loadingTransfers, setLoadingTransfers] = useState(false);
 
+  /** * @memoizado contract
+   * Referencia al Smart Contract para realizar consultas y transacciones.
+   */
   const contract = useMemo(() => (signer ? getContract(signer) : null), [signer]);
 
-
-  // ✅ Obtener transferencias pendientes
+  /**
+   * EFECTO: Filtro de Bandeja de Entrada.
+   * Busca en el historial del usuario aquellas transferencias donde:
+   * - El estado es 0 (Pending).
+   * - El destinatario (to) es la cuenta actual.
+   */
   useEffect(() => {
     if (!contract || !account) return;
 
@@ -38,6 +60,7 @@ export default function Dashboard() {
 
         for (const id of transferIds) {
           const transfer = await contract.getTransfer(Number(id));
+          // Lógica de Filtrado: Status 0 (Pendiente) e Incoming (Para mí)
           if (Number(transfer.status) === 0 && transfer.to.toLowerCase() === account.toLowerCase()) {
             const tokenData = await contract.getToken(Number(transfer.tokenId));
             pending.push({
@@ -61,7 +84,10 @@ export default function Dashboard() {
   }, [contract, account]);
 
 
-  // ✅ Funciones para aceptar/rechazar
+  /**
+   * Aprueba una transferencia entrante.
+   * @param id - El identificador único de la transferencia en el contrato.
+   */
   async function handleAccept(id: number) {
     try {
       const tx = await contract.acceptTransfer(id);
@@ -74,6 +100,10 @@ export default function Dashboard() {
     }
   }
 
+  /**
+   * Rechaza una transferencia y devuelve/cancela el movimiento.
+   * @param id - El identificador único de la transferencia.
+   */
   async function handleReject(id: number) {
     try {
       const tx = await contract.rejectTransfer(id);
@@ -87,7 +117,7 @@ export default function Dashboard() {
   }
 
 
-
+  /** Configuración de botones de navegación principal */
   const cards = [
     {
       title: "Crear Activos",
@@ -130,7 +160,7 @@ export default function Dashboard() {
 
         <h1 className="text-3xl font-bold text-blue-700 mb-8 text-center">Panel de Usuario</h1>
 
-        {/* Cards principales */}
+        {/* GRID DE NAVEGACIÓN: Accesos directos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {cards.map((card, idx) => (
             <div key={idx} className="bg-white rounded-xl shadow-md hover:shadow-xl transition p-6 flex flex-col items-center text-center">
@@ -144,7 +174,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* ✅ Card para transferencias pendientes */}
+        {/* BANDEJA DE ENTRADA: Gestión de Transferencias Pendientes */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-blue-700 mb-4">Transferencias Pendientes</h2>
           {loadingTransfers && <p className="text-blue-600">Cargando transferencias...</p>}
@@ -158,6 +188,8 @@ export default function Dashboard() {
                 <p><strong>De:</strong> {transfer.from.slice(0, 6)}...{transfer.from.slice(-4)}</p>
                 <p><strong>Cantidad:</strong> {transfer.amount}</p>
                 <p><strong>Fecha:</strong> {transfer.date}</p>
+
+                {/* ACCIONES CRÍTICAS: Aceptar o Rechazar el activo */}
                 <div className="flex gap-2 mt-4">
                   <button
                     onClick={() => handleAccept(transfer.id)}

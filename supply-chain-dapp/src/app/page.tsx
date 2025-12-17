@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Página de inicio (Home) de la DApp Supply Chain.
+ * Gestiona el flujo de entrada: conexión de wallet, registro de nuevos usuarios
+ * mediante solicitud de roles y redirección automática según el estado del perfil.
+ */
+
 "use client";
 
 import { useWallet } from "@/contexts/WalletContext";
@@ -5,13 +11,23 @@ import { useSupplyChain } from "@/hooks/useSupplychain";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
+/**
+ * Componente interno: Formulario de Solicitud de Rol.
+ * * @param {Object} props
+ * @param {boolean} props.loading - Indica si hay una transacción en curso.
+ * @param {Function} props.requestUserRole - Función del hook para enviar la TX al contrato.
+ */
 function RoleRequestForm({ loading, requestUserRole }: { loading: boolean; requestUserRole: (role: string) => Promise<void> }) {
 
+  /** @dev Estado local para el valor seleccionado en el dropdown */
   const [roleToRequest, setRoleToRequest] = useState<string>('');
 
-  // Opcional: Definir los roles disponibles
+  /** @dev Roles permitidos por la lógica del negocio del Smart Contract */
   const availableRoles = ["Producer", "Factory", "Retailer", "Consumer"];
 
+  /**
+   * Valida la selección y dispara la transacción hacia la Blockchain.
+   */
   const handleSubmit = async () => {
     if (roleToRequest) {
       await requestUserRole(roleToRequest);
@@ -50,31 +66,33 @@ function RoleRequestForm({ loading, requestUserRole }: { loading: boolean; reque
   );
 }
 
-
+/**
+ * Componente Principal: Home.
+ * Implementa la lógica de redirección y estados de autenticación Web3.
+ */
 export default function Home() {
-  // Consumimos la conexión (useWallet) y los datos del contrato (useSupplyChain)
+  /** @dev Consumimos hooks globales y locales */
   const { account, connectWallet } = useWallet();
   const { isRegistered, role, status, loading: supplyChainLoading, requestUserRole } = useSupplyChain();
   const router = useRouter();
 
-  // Redirección del Admin
-
-useEffect(() => {
-  if (role === "Admin") {
-    router.push("/dashboard");
-  } else if (role && status === "Approved") {
-    router.push("/dashboard");
-  }
-}, [role, status, router]);
-
-
-  const isLoading = !account && !isRegistered; // Carga inicial
-
-  // Contenido dinámico del Home
+  /**
+  * EFECTO DE REDIRECCIÓN:
+  * Si el usuario ya tiene un rol y está aprobado (o es Admin),
+  * lo movemos automáticamente al Dashboard para mejorar la UX.
+  */
+  useEffect(() => {
+    if (role === "Admin") {
+      router.push("/dashboard");
+    } else if (role && status === "Approved") {
+      router.push("/dashboard");
+    }
+  }, [role, status, router]);
 
   return (
     <div className="flex items-center justify-center h-full">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md text-center">
+        {/* ESTADO 1: Wallet no conectada */}
         {!account && (
           <>
             <h2 className="text-2xl font-semibold mb-4">¡Bienvenido!</h2>
@@ -88,10 +106,12 @@ useEffect(() => {
           </>
         )}
 
+        {/* ESTADO 2: Conectado pero verificando registro en la Blockchain */}
         {account && !isRegistered && !supplyChainLoading && (
           <p className="text-gray-500">Verificando estado de registro...</p>
         )}
 
+        {/* ESTADO 3: Wallet conectada pero NO registrada en el contrato */}
         {account && isRegistered === false && (
           <RoleRequestForm
             loading={supplyChainLoading}
@@ -99,6 +119,7 @@ useEffect(() => {
           />
         )}
 
+        {/* ESTADO 4: Registrado pero quizás aún pendiente de aprobación */}
         {account && isRegistered && role !== "Admin" && (
           <div className="p-4 bg-green-50 rounded-lg">
             <p className="text-green-700 font-semibold">✅ Usuario Registrado</p>

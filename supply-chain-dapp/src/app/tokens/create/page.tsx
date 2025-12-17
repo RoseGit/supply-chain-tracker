@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Página para la creación de nuevos activos (tokens) en la Supply Chain.
+ * Permite definir las propiedades del producto y establecer relaciones de 
+ * parentesco entre activos para mantener la trazabilidad.
+ */
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -5,29 +10,47 @@ import { useRouter } from "next/navigation";
 import { useSupplyChain } from "@/hooks/useSupplychain";
 import { useWallet } from "@/contexts/WalletContext";
 import { getContract } from "@/contracts/contract";
-import { ethers } from "ethers";
 import { useNotification } from "@/contexts/NotificationContext";
 
-
+/**
+ * Componente CreateTokenPage.
+ * * Funcionalidades clave:
+ * 1. Formulario vinculado a estados para capturar metadatos del activo.
+ * 2. Carga dinámica de activos existentes del usuario para definir un "Activo Padre".
+ * 3. Integración con el Smart Contract para emitir la transacción de creación.
+ */
 export default function CreateTokenPage() {
     const router = useRouter();
-    const { loading, createToken } = useSupplyChain(); // Aquí usaremos createToken después
+    /** @dev Hook de lógica de negocio para ejecutar la creación en la blockchain */
+    const { loading, createToken } = useSupplyChain();
+    /** @dev Datos de conexión y feedback */
     const { account, signer } = useWallet();
     const { setMessage } = useNotification();
+
+    // --- ESTADOS DEL FORMULARIO ---
     const [name, setName] = useState("");
     const [totalSupply, setTotalSupply] = useState<number | "">("");
     const [features, setFeatures] = useState("");
     const [parentAssets, setParentAssets] = useState<{ id: number; name: string }[]>([]);
     const [selectedParent, setSelectedParent] = useState<number | "">("");
 
+    /**
+     * @memoizado contract
+     * Instancia del contrato conectada al firmante actual.
+     */
     const contract = useMemo(() => (signer ? getContract(signer) : null), [signer]);
 
-    // ✅ Obtener activos del usuario para el combo Parent Asset
+    /**
+     * EFECTO: Carga de Activos Propios.
+     * Busca los tokens que ya posee el usuario para listarlos como posibles "padres".
+     * Esto permite, por ejemplo, que un "Lote de Harina" sea padre de un "Lote de Pan".
+     */
     useEffect(() => {
         if (!contract || !account) return;
 
         const fetchAssets = async () => {
             try {
+                // Obtiene los IDs de los tokens del usuario desde el contrato
                 const tokenIds: bigint[] = await contract.getUserTokens(account);
                 const assets: { id: number; name: string }[] = [];
 
@@ -45,7 +68,10 @@ export default function CreateTokenPage() {
     }, [contract, account]);
 
 
-    // ✅ Función para crear el token
+    /**
+     * Valida los datos y dispara la transacción de creación.
+     * Si se selecciona un padre, se envía su ID; de lo contrario, se envía 0 (raíz).
+     */
     async function handleCreateToken() {
         if (!name || !totalSupply || !features) {
             alert("Por favor completa todos los campos.");
@@ -71,7 +97,7 @@ export default function CreateTokenPage() {
                 <h1 className="text-2xl font-bold text-blue-700 mb-6 text-center">Crear Activo</h1>
 
                 <div className="space-y-4">
-                    {/* Nombre del activo */}
+                    {/* Campo: Nombre */}
                     <div>
                         <label className="block text-gray-700 font-medium mb-2">Nombre del activo</label>
                         <input
@@ -83,7 +109,7 @@ export default function CreateTokenPage() {
                         />
                     </div>
 
-                    {/* Total Supply */}
+                    {/* Campo: Suministro Total */}
                     <div>
                         <label className="block text-gray-700 font-medium mb-2">Total Supply</label>
                         <input
@@ -95,7 +121,7 @@ export default function CreateTokenPage() {
                         />
                     </div>
 
-                    {/* Características */}
+                    {/* Campo: Características / Metadatos */}
                     <div>
                         <label className="block text-gray-700 font-medium mb-2">Características (JSON)</label>
                         <textarea
@@ -107,7 +133,7 @@ export default function CreateTokenPage() {
                         />
                     </div>
 
-                    {/* ✅ Parent Asset (opcional) */}
+                    {/* Selector: Activo Padre (Opcional) */}
                     <div>
                         <label className="block text-gray-700 font-medium mb-2">Parent Asset (opcional)</label>
                         <select
@@ -125,7 +151,7 @@ export default function CreateTokenPage() {
                     </div>
                 </div>
 
-                {/* Botones */}
+                {/* Acciones del formulario */}
                 <div className="flex justify-between mt-6">
                     <button
                         onClick={() => router.push("/dashboard")}
