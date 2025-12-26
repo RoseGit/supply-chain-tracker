@@ -47,7 +47,7 @@ export default function ClientHeader() {
         <h1 className="text-xl font-bold">Supply Chain DApp</h1>
         {/* ✅ Botón solo visible si NO estamos en /dashboard */}
         {
-          pathname !== "/dashboard" && (
+          pathname !== "/dashboard" && pathname !== "/" && (
             <button
               onClick={() => router.push("/dashboard")}
               className="flex items-center gap-2 px-3 py-1 bg-blue-500 rounded hover:bg-blue-700 transition text-sm"
